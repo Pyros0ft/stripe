@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stripe Payments Web App</title>
+  <!-- Add the Stripe.js library -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f4;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    #payment-form {
+      width: 300px;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    #card-element {
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    #card-errors {
+      color: #ff0000;
+      margin-top: 10px;
+    }
+
+    .success-message {
+      color: #4caf50;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Stripe Payments Web App</h1>
+
+  <form id="payment-form">
+    <label for="card-element">
+      Enter your card details:
+    </label>
+    <div id="card-element">
+      <!-- A Stripe Element will be inserted here. -->
+    </div>
+
+    <!-- Used to display form errors. -->
+    <div id="card-errors" role="alert"></div>
+
+    <button type="submit" id="submit-button" disabled>Submit Payment</button>
+
+    <p class="success-message" id="success-message"></p>
+  </form>
+
+  <script>
+    // Set your publishable key
+    const stripe = Stripe('your_stripe_publishable_key');
+    
+    // Create an instance of Elements
+    const elements = stripe.elements();
+
+    // Create an instance of the card Element
+    const card = elements.create('card');
+
+    // Add an instance of the card Element into the `card-element` div
+    card.mount('#card-element');
+
+    // Handle real-time validation errors from the card Element
+    card.addEventListener('change', function(event) {
+      const displayError = document.getElementById('card-errors');
+      const submitButton = document.getElementById('submit-button');
+      
+      if (event.error) {
+        displayError.textContent = event.error.message;
+        submitButton.disabled = true;
+      } else {
+        displayError.textContent = '';
+        submitButton.disabled = false;
+      }
+    });
+
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    const successMessage = document.getElementById('success-message');
+    form.addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const { token, error } = await stripe.createToken(card);
+
+      if (error) {
+        // Inform the user if there was an error
+        const errorElement = document.getElementById('card-errors');
+        errorElement.textContent = error.message;
+        successMessage.textContent = '';
+      } else {
+        // Send the token to your server
+        const response = await fetch('/handlePayment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: 'user123', // Replace with actual user ID
+            token: token.id,
+          }),
+        });
+
+        if (response.ok) {
+          // Display success message
+          successMessage.textContent = 'Payment successful!';
+        } else {
+          // Display error message
+          successMessage.textContent = 'Error processing payment';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
